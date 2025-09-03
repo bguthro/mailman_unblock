@@ -77,6 +77,22 @@ python mailman_unblock.py --letters 1,abc
 python mailman_unblock.py --dry-run --verbose
 ```
 
+### Dump HTML and payloads for diagnostics
+
+```bash
+python mailman_unblock.py --dry-run --verbose --dump-html --dump-dir debug-dump
+```
+
+This writes these artifacts to `debug-dump/`:
+- `login_*.html` — login page and response if a login form is present
+- `members_<letter>_before.html` — Members page before submit
+- `members_<letter>_payload.txt` — Redacted ordered POST payload pairs
+- `members_<letter>_post_response.html` — Response to the submit
+- `members_<letter>_after.html` — Members page after submit
+- Bounce equivalents when the bounce-clear fallback runs: `bounce_before.html`, `bounce_post_response.html`, `bounce_after.html`, and retry artifacts
+
+Sensitive values (e.g., `adminpw`) are redacted in payload dumps.
+
 ---
 
 ## Logging
