@@ -1,10 +1,13 @@
+PY_VERSION := 3.10.16
+VENV := mailmanunblock-$(PY_VERSION)
+
 all: configure test
 
 clean:
 	rm -rf build dist .eggs .DS_Store *.egg-info
 
 distclean: clean
-	pyenv virtualenv-delete -f mailmanunblock-3.10.17
+	pyenv virtualenv-delete -f $(VENV)
 	rm -f .python-version
 
 configure: python-virtualenv
@@ -12,21 +15,37 @@ configure: python-virtualenv
 python-virtualenv: .python-version
 
 .python-version:
-	@if ! pyenv versions --bare | grep -qx "3.10.16"; then \
-		pyenv install 3.10.16; \
+	@if ! pyenv versions --bare | grep -qx "$(PY_VERSION)"; then \
+		pyenv install $(PY_VERSION); \
 	fi
-	@if ! pyenv virtualenvs --bare | grep -qx "mailmanunblock-3.10.16"; then \
-		pyenv virtualenv 3.10.16 mailmanunblock-3.10.16; \
+	@if ! pyenv virtualenvs --bare | grep -qx "$(VENV)"; then \
+		pyenv virtualenv $(PY_VERSION) $(VENV); \
 	fi
-	pyenv local mailmanunblock-3.10.16
+	pyenv local $(VENV)
 	python -m pip install --upgrade pip
 	python -m pip install -r requirements.txt
 
 test:
-	python3 ./mailman_unblock.py --dry-run
+	. ./env.sh >/dev/null 2>&1 || true; python3 ./mailman_unblock.py --dry-run
 
 unblock:
-	python3 ./mailman_unblock.py
+	. ./env.sh >/dev/null 2>&1 || true; python3 ./mailman_unblock.py
+
+# Unblock a specific letter: make LETTER=c unblock-letter
+unblock-letter:
+	@if [ -z "$(LETTER)" ]; then \
+		echo "Error: provide LETTER, e.g. 'make LETTER=c unblock-letter'"; \
+		exit 1; \
+	fi
+	. ./env.sh >/dev/null 2>&1 || true; python3 ./mailman_unblock.py --letter $(LETTER)
+
+# Dry-run for a specific letter: make LETTER=c test-letter
+test-letter:
+	@if [ -z "$(LETTER)" ]; then \
+		echo "Error: provide LETTER, e.g. 'make LETTER=c test-letter'"; \
+		exit 1; \
+	fi
+	. ./env.sh >/dev/null 2>&1 || true; python3 ./mailman_unblock.py --dry-run --letter $(LETTER)
 
 check:
 	ruff check && ruff format --check
@@ -37,4 +56,4 @@ fix:
 reformat:
 	ruff format
 
-.PHONY: clean distclean python-virtualenv configure test unblock check fix reformat
+.PHONY: all clean distclean python-virtualenv configure test unblock unblock-letter test-letter check fix reformat
