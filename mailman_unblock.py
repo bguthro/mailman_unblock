@@ -20,11 +20,14 @@ import requests
 from bs4 import BeautifulSoup
 
 # ---- Configuration via environment ----
-BASE: Optional[str] = os.environ.get(
-    "MAILMAN_BASE_URL"
-)  # e.g. https://lists.example.com
-LISTNAME: Optional[str] = os.environ.get("MAILMAN_LIST_NAME")  # e.g. skilodge
-ADMINPW: Optional[str] = os.environ.get("MAILMAN_ADMIN_PW")  # list admin password
+# Eg:
+# export MAILMAN_ADMIN_PW=xxx
+# export MAILMAN_LIST_NAME=skilodge
+# export MAILMAN_BASE_URL=https://lists.tmfpond.com
+#
+BASE: Optional[str] = os.environ.get("MAILMAN_BASE_URL")
+LISTNAME: Optional[str] = os.environ.get("MAILMAN_LIST_NAME")
+ADMINPW: Optional[str] = os.environ.get("MAILMAN_ADMIN_PW")
 
 # ---- Globals ----
 sess = requests.Session()
