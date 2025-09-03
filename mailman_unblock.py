@@ -20,9 +20,11 @@ import requests
 from bs4 import BeautifulSoup
 
 # ---- Configuration via environment ----
-BASE: Optional[str]    = os.environ.get("MAILMAN_BASE_URL")   # e.g. https://lists.example.com
-LISTNAME: Optional[str]= os.environ.get("MAILMAN_LIST_NAME")  # e.g. skilodge
-ADMINPW: Optional[str] = os.environ.get("MAILMAN_ADMIN_PW")   # list admin password
+BASE: Optional[str] = os.environ.get(
+    "MAILMAN_BASE_URL"
+)  # e.g. https://lists.example.com
+LISTNAME: Optional[str] = os.environ.get("MAILMAN_LIST_NAME")  # e.g. skilodge
+ADMINPW: Optional[str] = os.environ.get("MAILMAN_ADMIN_PW")  # list admin password
 
 # ---- Globals ----
 sess = requests.Session()
@@ -34,12 +36,17 @@ DUMP_DIR: Optional[Path] = None
 
 # ------------------------------- Helpers --------------------------------- #
 
+
 def require_env() -> None:
-    missing = [k for k, v in [
-        ("MAILMAN_BASE_URL", BASE),
-        ("MAILMAN_LIST_NAME", LISTNAME),
-        ("MAILMAN_ADMIN_PW", ADMINPW),
-    ] if not v]
+    missing = [
+        k
+        for k, v in [
+            ("MAILMAN_BASE_URL", BASE),
+            ("MAILMAN_LIST_NAME", LISTNAME),
+            ("MAILMAN_ADMIN_PW", ADMINPW),
+        ]
+        if not v
+    ]
     if missing:
         logger.error("Missing env var(s): %s", ", ".join(missing))
         sys.exit(2)
@@ -80,7 +87,7 @@ def letters_from_args(args: argparse.Namespace) -> List[str]:
     if args.letter:
         return [args.letter.lower()]
     # Default: all Mailman letter tabs
-    return ["1"] + [chr(c) for c in range(ord("a"), ord("z")+1)]
+    return ["1"] + [chr(c) for c in range(ord("a"), ord("z") + 1)]
 
 
 def absolutize_action(form_action: Optional[str], current_url: str) -> str:
@@ -132,7 +139,11 @@ def login() -> None:
     post_url = absolutize_action(form.get("action"), r.url)
     method = (form.get("method") or "post").lower()
 
-    resp = sess.post(post_url, data=data, timeout=20) if method == "post" else sess.get(post_url, params=data, timeout=20)
+    resp = (
+        sess.post(post_url, data=data, timeout=20)
+        if method == "post"
+        else sess.get(post_url, params=data, timeout=20)
+    )
     resp.raise_for_status()
     logger.debug("Submitted login form for list %s", LISTNAME)
     dump_text("login_submit_response.html", resp.text)
@@ -200,19 +211,19 @@ def _nomail_reason_from_box(box) -> Optional[str]:
     except Exception:
         sibs = []
     for s in sibs[:3]:
-        if hasattr(s, 'strip'):
+        if hasattr(s, "strip"):
             txt = str(s).strip()
         else:
-            txt = s.get_text(strip=True) if hasattr(s, 'get_text') else str(s)
-        if txt.startswith('[') and ']' in txt:
+            txt = s.get_text(strip=True) if hasattr(s, "get_text") else str(s)
+        if txt.startswith("[") and "]" in txt:
             ch = txt[1].upper()
-            if ch in ('A', 'B', 'U'):
+            if ch in ("A", "B", "U"):
                 return ch
     # Fallback: scan the containing cell's text
-    td = box.find_parent('td')
+    td = box.find_parent("td")
     if td:
         txt = td.get_text(" ", strip=True)
-        for ch in ('A', 'B', 'U'):
+        for ch in ("A", "B", "U"):
             token = f"[{ch}]"
             if token in txt:
                 return ch
@@ -234,7 +245,11 @@ def find_blocked_rows_with_reasons(form):
         if not addr:
             # nearest 'user' input as fallback
             user_inp = box.find_next("input", attrs={"name": "user"})
-            addr = user_inp.get("value") if user_inp and user_inp.get("value") else "(unknown)"
+            addr = (
+                user_inp.get("value")
+                if user_inp and user_inp.get("value")
+                else "(unknown)"
+            )
         reason = _nomail_reason_from_box(box)
         rows.append((name, addr, reason))
     return rows
@@ -264,7 +279,17 @@ def pick_members_submit(form) -> Tuple[str, str]:
         val = inp.get("value") or ""
         text = f"{name} {val}".lower()
         score = 0
-        if any(w in text for w in ["submit your changes", "submit", "change", "apply", "update", "setmember"]):
+        if any(
+            w in text
+            for w in [
+                "submit your changes",
+                "submit",
+                "change",
+                "apply",
+                "update",
+                "setmember",
+            ]
+        ):
             score += 5
         if "search" in text or "findmember" in text:
             score -= 10
@@ -284,13 +309,14 @@ def pick_members_submit(form) -> Tuple[str, str]:
 
 # ---------------------------- Main Workhorse ------------------------------ #
 
+
 def pick_bounce_submit(form) -> Tuple[str, str]:
     """Find a submit control on the Bounce page that clears selected users."""
     candidates = []
     for inp in form.find_all("input"):
         if (inp.get("type") or "").lower() == "submit":
             name = inp.get("name")
-            val  = inp.get("value") or ""
+            val = inp.get("value") or ""
             if name:
                 candidates.append((name, val))
                 # Prefer buttons that look like 'Clear', 'clear', 'Reset bounce info', etc.
@@ -337,7 +363,9 @@ def clear_bounces_for_users(target_addrs: list[str]) -> bool:
 
     # If no matching users found on the bounce page, nothing to do.
     if not any(k == "user" for (k, _) in pairs):
-        logger.debug("Bounce page had no matching users for: %s", ", ".join(target_addrs))
+        logger.debug(
+            "Bounce page had no matching users for: %s", ", ".join(target_addrs)
+        )
         return False
 
     # Add a 'clear' submit button (best-effort match)
@@ -364,6 +392,7 @@ def clear_bounces_for_users(target_addrs: list[str]) -> bool:
     dump_text("bounce_after.html", vr.text)
     return True
 
+
 def pairs_to_debug_names(pairs):
     names = [k for (k, _) in pairs]
     # show nomail keys first; cap length to keep logs readable
@@ -371,6 +400,7 @@ def pairs_to_debug_names(pairs):
     if nomails:
         return (nomails + [n for n in names if not n.endswith("_nomail")])[:40]
     return names[:40]
+
 
 def process_letter(letter: str, dry_run: bool = False) -> int:
     page_url = f"{BASE.rstrip('/')}/mailman/admin/{LISTNAME}/members?letter={letter}"
@@ -385,10 +415,11 @@ def process_letter(letter: str, dry_run: bool = False) -> int:
     blocked_rows = find_blocked_rows_with_reasons(form)
     if logger.isEnabledFor(logging.DEBUG):
         from collections import Counter
-        reason_counts = Counter(r or '?' for (_, _, r) in blocked_rows)
+
+        reason_counts = Counter(r or "?" for (_, _, r) in blocked_rows)
         logger.debug("[%s] Blocked members by reason: %s", letter, dict(reason_counts))
     # Only target addresses disabled by bounces [B]
-    target = [(n, a) for (n, a, r) in blocked_rows if r == 'B']
+    target = [(n, a) for (n, a, r) in blocked_rows if r == "B"]
     blocked_names = [n for (n, _) in target]
     blocked_addrs = [a for (_, a) in target]
     before = len(blocked_names)
@@ -397,18 +428,33 @@ def process_letter(letter: str, dry_run: bool = False) -> int:
         return 0
 
     if dry_run:
-        logger.info("[%s] Would unblock %d member(s): %s", letter, before, ", ".join(blocked_addrs))
+        logger.info(
+            "[%s] Would unblock %d member(s): %s",
+            letter,
+            before,
+            ", ".join(blocked_addrs),
+        )
         # Build and dump the would-be payload without submitting
         pairs_preview = collect_payload_pairs(form)
         nomail_set_preview = set(blocked_names)
-        pairs_preview = [(k, v) for (k, v) in pairs_preview if k not in nomail_set_preview]
+        pairs_preview = [
+            (k, v) for (k, v) in pairs_preview if k not in nomail_set_preview
+        ]
         # Do not include *_nomail for targeted users (unchecked fields are omitted by browsers)
         sub_name_preview, sub_val_preview = pick_members_submit(form)
         pairs_preview.append((sub_name_preview, sub_val_preview))
         post_url_preview = absolutize_action(form.get("action"), r.url)
-        logger.debug("[%s] (dry-run) Using submit '%s'='%s'", letter, sub_name_preview, sub_val_preview)
+        logger.debug(
+            "[%s] (dry-run) Using submit '%s'='%s'",
+            letter,
+            sub_name_preview,
+            sub_val_preview,
+        )
         logger.debug("[%s] (dry-run) Action URL: %s", letter, post_url_preview)
-        dump_text(f"members_{letter}_payload.txt", "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs_preview)]))
+        dump_text(
+            f"members_{letter}_payload.txt",
+            "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs_preview)]),
+        )
         dump_text(f"members_{letter}_action.txt", post_url_preview)
         return before
 
@@ -430,7 +476,10 @@ def process_letter(letter: str, dry_run: bool = False) -> int:
     logger.debug("[%s] Using submit '%s'='%s'", letter, submit_name, submit_value)
     logger.debug("[%s] Action URL: %s", letter, post_url)
     logger.debug("[%s] POST keys (sample): %s", letter, [k for (k, _) in pairs][:40])
-    dump_text(f"members_{letter}_payload.txt", "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs)]))
+    dump_text(
+        f"members_{letter}_payload.txt",
+        "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs)]),
+    )
     pr = sess.post(post_url, data=pairs, headers=headers, timeout=25)
     pr.raise_for_status()
     dump_text(f"members_{letter}_post_response.html", pr.text)
@@ -442,7 +491,7 @@ def process_letter(letter: str, dry_run: bool = False) -> int:
     _, vform = parse_members_form(vr.text)
     if vform:
         remaining_rows = find_blocked_rows_with_reasons(vform)
-        remaining = sum(1 for (_, _, r) in remaining_rows if r == 'B')
+        remaining = sum(1 for (_, _, r) in remaining_rows if r == "B")
     else:
         remaining = before
     if remaining < before:
@@ -451,58 +500,96 @@ def process_letter(letter: str, dry_run: bool = False) -> int:
         return unblocked
 
     # Fallback: clear bounces for the affected users, then retry members submit once
-    logger.info("[%s] No change after submit; attempting Bounce clear for %d user(s).", letter, before)
+    logger.info(
+        "[%s] No change after submit; attempting Bounce clear for %d user(s).",
+        letter,
+        before,
+    )
     did_bounce_clear = clear_bounces_for_users(blocked_addrs)
     if did_bounce_clear:
         # Reload current letter (CSRF, latest state)
-        r2 = sess.get(page_url, timeout=25); r2.raise_for_status()
+        r2 = sess.get(page_url, timeout=25)
+        r2.raise_for_status()
         dump_text(f"members_{letter}_before_retry.html", r2.text)
         _, form2 = parse_members_form(r2.text)
         if form2:
             # rebuild pairs and resubmit without *_nomail
             pairs2 = collect_payload_pairs(form2)
             blocked_rows2 = find_blocked_rows_with_reasons(form2)
-            target2 = [(n, a) for (n, a, r) in blocked_rows2 if r == 'B']
+            target2 = [(n, a) for (n, a, r) in blocked_rows2 if r == "B"]
             nomail_set2 = set(n for (n, _) in target2)
             pairs2 = [(k, v) for (k, v) in pairs2 if k not in nomail_set2]
             name, value = pick_members_submit(form2)
             pairs2.append((name, value))
 
             post_url2 = absolutize_action(form2.get("action"), r2.url)
-            logger.debug("[%s] Retry submit '%s'='%s' → %s", letter, name, value, post_url2)
-            dump_text(f"members_{letter}_payload_retry.txt", "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs2)]))
+            logger.debug(
+                "[%s] Retry submit '%s'='%s' → %s", letter, name, value, post_url2
+            )
+            dump_text(
+                f"members_{letter}_payload_retry.txt",
+                "\n".join([f"{k}={v}" for (k, v) in redact_pairs(pairs2)]),
+            )
             pr2 = sess.post(post_url2, data=pairs2, headers=headers, timeout=25)
             pr2.raise_for_status()
             dump_text(f"members_{letter}_post_response_retry.html", pr2.text)
 
-            vr2 = sess.get(page_url, timeout=20); vr2.raise_for_status()
+            vr2 = sess.get(page_url, timeout=20)
+            vr2.raise_for_status()
             dump_text(f"members_{letter}_after_retry.html", vr2.text)
             _, vform2 = parse_members_form(vr2.text)
             if vform2:
                 remaining_rows2 = find_blocked_rows_with_reasons(vform2)
-                remaining2 = sum(1 for (_, _, r) in remaining_rows2 if r == 'B')
+                remaining2 = sum(1 for (_, _, r) in remaining_rows2 if r == "B")
             else:
                 remaining2 = before
             if remaining2 < before:
                 unblocked = before - remaining2
-                logger.info("[%s] Unblocked %d → %d remaining after Bounce clear.", letter, before, remaining2)
+                logger.info(
+                    "[%s] Unblocked %d → %d remaining after Bounce clear.",
+                    letter,
+                    before,
+                    remaining2,
+                )
                 return unblocked
 
-    logger.warning("[%s] Still blocked after members submit%s.",
-                   letter, " + bounce clear" if did_bounce_clear else "")
+    logger.warning(
+        "[%s] Still blocked after members submit%s.",
+        letter,
+        " + bounce clear" if did_bounce_clear else "",
+    )
     return 0
 
 
 # --------------------------------- CLI ----------------------------------- #
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Unblock Mailman 2.1 members (clear *_nomail).")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be changed but do not submit.")
+    parser = argparse.ArgumentParser(
+        description="Unblock Mailman 2.1 members (clear *_nomail)."
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed but do not submit.",
+    )
     parser.add_argument("--letter", help="Process a single letter page (e.g., 'b').")
-    parser.add_argument("--letters", help="Process multiple letters (e.g., '1,abc' or 'abc').")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging.")
-    parser.add_argument("--dump-html", action="store_true", help="Dump fetched pages and POST responses to --dump-dir.")
-    parser.add_argument("--dump-dir", default="debug-dump", help="Directory for --dump-html artifacts (default: debug-dump)")
+    parser.add_argument(
+        "--letters", help="Process multiple letters (e.g., '1,abc' or 'abc')."
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable debug logging."
+    )
+    parser.add_argument(
+        "--dump-html",
+        action="store_true",
+        help="Dump fetched pages and POST responses to --dump-dir.",
+    )
+    parser.add_argument(
+        "--dump-dir",
+        default="debug-dump",
+        help="Directory for --dump-html artifacts (default: debug-dump)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(

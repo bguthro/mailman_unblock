@@ -1,3 +1,3 @@
-rumps
 requests
 beautifulsoup4
+ruff

@@ -28,4 +28,13 @@ test:
 unblock:
 	python3 ./mailman_unblock.py
 
-.PHONY: clean distclean python-virtualenv configure run
+check:
+	ruff check && ruff format --check
+
+fix:
+	ruff check --fix
+
+reformat:
+	ruff format
+
+.PHONY: clean distclean python-virtualenv configure test unblock check 
