@@ -1,7 +1,4 @@
-app: configure dist/mailman_unblock.app/Contents/MacOS/mailman_unblock
-
-dist/mailman_unblock.app/Contents/MacOS/mailman_unblock: mailman_unblock.py requirements.txt
-	python setup.py py2app
+all: configure test
 
 clean:
 	rm -rf build dist .eggs .DS_Store *.egg-info
@@ -25,16 +22,10 @@ python-virtualenv: .python-version
 	python -m pip install --upgrade pip
 	python -m pip install -r requirements.txt
 
-debug: app
-	./dist/mailman_unblock.app/Contents/MacOS/mailman_unblock
+test:
+	python3 ./mailman_unblock.py --dry-run
 
-install: app
-	cp -r dist/mailman_unblock.app /Applications/
+unblock:
+	python3 ./mailman_unblock.py
 
-uninstall:
-	rm -rf /Applications/mailman_unblock.app
-
-run: install
-	open /Applications/mailman_unblock.app
-
-.PHONY: app clean distclean debug install uninstall install-config python-virtualenv
+.PHONY: clean distclean python-virtualenv configure run
