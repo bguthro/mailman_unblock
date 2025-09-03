@@ -37,4 +37,4 @@ fix:
 reformat:
 	ruff format
 
-.PHONY: clean distclean python-virtualenv configure test unblock check 
+.PHONY: clean distclean python-virtualenv configure test unblock check fix reformat
